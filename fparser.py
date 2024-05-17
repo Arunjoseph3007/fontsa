@@ -242,10 +242,13 @@ class FontParser:
 
         isShort = self.headTable.indexToLocFormat == 0
 
-        for _ in range(self.maxpTable.numGlyphs + 1):
+        for _ in range(self.maxpTable.numGlyphs):
             self.locaTable.append(
                 self.parseUint16() * 2 if isShort else self.parseUint32()
             )
+
+        endAddress = self.parseUint16() * 2 if isShort else self.parseUint32()
+        print(self.locaTable[:10])
 
     def parseGlyphTable(self) -> None:
         glyfTableRecord = self.gotoTable("glyf")
@@ -263,7 +266,7 @@ class FontParser:
             for _ in range(numberOfContours):
                 endPtsOfContours.append(self.parseUint16())
 
-            numberOfPoints = endPtsOfContours[-1]
+            numberOfPoints = endPtsOfContours[-1] + 1
             instructionLength = self.parseUint16()
             instructions: List[int] = []
             for _ in range(instructionLength):
@@ -301,7 +304,7 @@ class FontParser:
                     if isRepeat:
                         yOffset = 0
                     else:
-                        yOffset = self.parseUint16()
+                        yOffset = self.parseInt16()
 
                 xAcc += yOffset
                 xCoords.append(xAcc)
@@ -320,12 +323,19 @@ class FontParser:
                     if isRepeat:
                         yOffset = 0
                     else:
-                        yOffset = self.parseUint16()
+                        yOffset = self.parseInt16()
 
                 yAcc += yOffset
                 yCoords.append(yAcc)
 
-            print(endPtsOfContours, xCoords, yCoords, sep="\n")
+            print(
+                endPtsOfContours,
+                xCoords,
+                yCoords,
+                self.index - glyfTableRecord.offset,
+                self.locaTable[:5],
+                sep="\n",
+            )
 
     def goto(self, index: int) -> Self:
         self.index = index

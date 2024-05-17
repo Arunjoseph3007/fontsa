@@ -29,55 +29,50 @@ class Renderer:
         # pygame.draw.circle(self.screen, (0, 0, 255), (250, 250), 75)
         ends = [3, 6, 9, 12, 15]
         x = [
-            8451,
-            18944,
-            18944,
-            34306,
-            34110,
-            34110,
-            48188,
-            109370,
-            109370,
-            156987,
-            156975,
-            215345,
-            216367,
-            216367,
-            281392,
+            808,
+            100,
+            100,
+            808,
+            754,
+            754,
+            480,
+            154,
+            154,
+            422,
+            194,
+            709,
+            451,
+            451,
+            709,
+            194,
         ]
         y = [
             0,
             0,
-            765,
-            765,
-            65538,
-            110844,
-            152833,
-            154878,
-            186880,
-            217595,
-            221949,
-            221949,
-            252922,
-            253016,
-            253622,
+            1456,
+            1456,
+            84,
+            1371,
+            728,
+            1359,
+            96,
+            728,
+            54,
+            54,
+            660,
+            796,
+            1402,
+            1402,
         ]
-        s = 500
-        # pygame.draw.polygon(
-        #     self.screen, (0, 0, 255), [(x[i] / s, y[i] / s) for i in range(3 + 1)]
-        # )
-        # pygame.draw.polygon(
-        #     self.screen, (0, 0, 255), [(x[i] / s, y[i] / s) for i in range(4, 6 + 1)]
-        # )
-        # pygame.draw.polygon(
-        #     self.screen, (0, 0, 255), [(x[i] / s, y[i] / s) for i in range(7, 9 + 1)]
-        # )
-        # pygame.draw.polygon(
-        #     self.screen, (0, 0, 255), [(x[i] / s, y[i] / s) for i in range(10, 15)]
-        # )
+
+        co = lambda i: (x[i] * 0.4 + 40, y[i] * 0.4 + 40)
+        # pygame.draw.polygon(self.screen, (0, 0, 255), [co(i) for i in range(3 + 1)],width=1)
+        # pygame.draw.polygon(self.screen, (0, 0, 255), [co(i) for i in range(4, 6 + 1)],width=1)
+        # pygame.draw.polygon(self.screen, (0, 0, 255), [co(i) for i in range(7, 9 + 1)],width=1)
+        pygame.draw.polygon(self.screen, (0, 0, 255), [co(i) for i in range(10, 16)],width=1)
 
         for i in range(15):
-            pygame.draw.circle(self.screen, (0, 0, 255), (x[i] / s, y[i] / s), 10)
+            pygame.draw.circle(self.screen, (0, 0, 255), co(i), 5)
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():
