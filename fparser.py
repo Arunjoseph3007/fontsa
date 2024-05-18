@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Self, NamedTuple, Dict, List
+from typing import Self, NamedTuple, Dict, List, Union
+from glyph import Glyph
 
 
 def isNthBitOn(word: bytes, index: int) -> bool:
@@ -105,6 +106,7 @@ class FontParser:
     maxpTable: MaxpTable
     headTable: HeadTable
     locaTable: List[int] = []
+    glyphs: List[Glyph] = []
 
     def __init__(self, file: str) -> None:
         self.file = file
@@ -248,94 +250,97 @@ class FontParser:
             )
 
         endAddress = self.parseUint16() * 2 if isShort else self.parseUint32()
-        print(self.locaTable[:10])
 
     def parseGlyphTable(self) -> None:
         glyfTableRecord = self.gotoTable("glyf")
 
-        for offset in self.locaTable[:1]:
+        for offset in self.locaTable:
             self.goto(glyfTableRecord.offset + offset)
-            numberOfContours = self.parseInt16()
-            xMin = self.parseInt16()
-            yMin = self.parseInt16()
-            xMax = self.parseInt16()
-            yMax = self.parseInt16()
+            newGlyph = self.parseGlyph()
+            if newGlyph:
+                self.glyphs.append(newGlyph)
 
-            endPtsOfContours: List[int] = []
+    def parseGlyph(self) -> Union[Glyph, None]:
+        numberOfContours = self.parseInt16()
+        if numberOfContours < 0:
+            return None
+        xMin = self.parseInt16()
+        yMin = self.parseInt16()
+        xMax = self.parseInt16()
+        yMax = self.parseInt16()
 
-            for _ in range(numberOfContours):
-                endPtsOfContours.append(self.parseUint16())
+        endPtsOfContours: List[int] = []
+        for _ in range(numberOfContours):
+            endPtsOfContours.append(self.parseUint16())
 
-            numberOfPoints = endPtsOfContours[-1] + 1
-            instructionLength = self.parseUint16()
-            instructions: List[int] = []
-            for _ in range(instructionLength):
-                instructions.append(self.parseUint8())
+        numberOfPoints = endPtsOfContours[-1] + 1
+        instructionLength = self.parseUint16()
+        instructions: List[int] = []
+        for _ in range(instructionLength):
+            instructions.append(self.parseUint8())
 
-            flags: List[bytes] = []
+        flags: List[bytes] = []
 
-            while len(flags) < numberOfPoints:
-                flag = self.takeBytes(1)
-                repeat = isNthBitOn(flag, 3)
-                flags.append(flag)
+        while len(flags) < numberOfPoints:
+            flag = self.takeBytes(1)
+            repeat = isNthBitOn(flag, 3)
+            flags.append(flag)
 
-                if repeat:
-                    repeatCount = self.parseUint8()
-                    print(f"{repeatCount}")
-                    for _ in range(repeatCount):
-                        flags.append(flag)
+            if repeat:
+                repeatCount = self.parseUint8()
+                for _ in range(repeatCount):
+                    flags.append(flag)
 
-            xCoords: List[int] = []
-            yCoords: List[int] = []
-            xAcc: int = 0
-            yAcc: int = 0
+        xCoords: List[int] = []
+        yCoords: List[int] = []
+        xAcc: int = 0
+        yAcc: int = 0
 
-            for flag in flags:
-                xShort = isNthBitOn(flag, 1)
-                yOffset: int
+        for flag in flags:
+            xShort = isNthBitOn(flag, 1)
+            yOffset: int
 
-                if xShort:
-                    yOffset = self.parseUint8()
-                    isPositive = isNthBitOn(flag, 4)
-                    if not isPositive:
-                        yOffset *= -1
+            if xShort:
+                yOffset = self.parseUint8()
+                isPositive = isNthBitOn(flag, 4)
+                if not isPositive:
+                    yOffset *= -1
+            else:
+                isRepeat = isNthBitOn(flag, 4)
+                if isRepeat:
+                    yOffset = 0
                 else:
-                    isRepeat = isNthBitOn(flag, 4)
-                    if isRepeat:
-                        yOffset = 0
-                    else:
-                        yOffset = self.parseInt16()
+                    yOffset = self.parseInt16()
 
-                xAcc += yOffset
-                xCoords.append(xAcc)
+            xAcc += yOffset
+            xCoords.append(xAcc)
 
-            for flag in flags:
-                yShort = isNthBitOn(flag, 2)
-                yOffset: int
+        for flag in flags:
+            yShort = isNthBitOn(flag, 2)
+            yOffset: int
 
-                if yShort:
-                    yOffset = self.parseUint8()
-                    isPositive = isNthBitOn(flag, 5)
-                    if not isPositive:
-                        yOffset *= -1
+            if yShort:
+                yOffset = self.parseUint8()
+                isPositive = isNthBitOn(flag, 5)
+                if not isPositive:
+                    yOffset *= -1
+            else:
+                isRepeat = isNthBitOn(flag, 5)
+                if isRepeat:
+                    yOffset = 0
                 else:
-                    isRepeat = isNthBitOn(flag, 5)
-                    if isRepeat:
-                        yOffset = 0
-                    else:
-                        yOffset = self.parseInt16()
+                    yOffset = self.parseInt16()
 
-                yAcc += yOffset
-                yCoords.append(yAcc)
+            yAcc += yOffset
+            yCoords.append(yAcc)
 
-            print(
-                endPtsOfContours,
-                xCoords,
-                yCoords,
-                self.index - glyfTableRecord.offset,
-                self.locaTable[:5],
-                sep="\n",
-            )
+        return Glyph(
+            numberOfContours=numberOfContours,
+            endPtsOfContours=endPtsOfContours,
+            flags=flags,
+            xCoords=xCoords,
+            yCoords=yCoords,
+        )
 
     def goto(self, index: int) -> Self:
         self.index = index
