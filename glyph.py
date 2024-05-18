@@ -48,7 +48,7 @@ class Glyph:
                 if not onTheCurve:
                     spline.append(p)
                 elif len(spline) == 1:
-                    pygame.draw.line(screen, blue, spline[0], p)
+                    pygame.draw.aaline(screen, blue, spline[0], p)
                     spline = [p]
                 elif len(spline) > 1:
                     spline.append(p)
@@ -58,7 +58,7 @@ class Glyph:
                     spline.append(p)
             # Last countour with starting point
             if len(spline) == 1:
-                pygame.draw.line(screen, blue, spline[0], newPoints[startIndex])
+                pygame.draw.aaline(screen, blue, spline[0], newPoints[startIndex])
             else:
                 spline.append(newPoints[startIndex])
                 pygame.gfxdraw.bezier(screen, spline, steps, blue)
