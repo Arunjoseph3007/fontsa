@@ -30,7 +30,7 @@ class Renderer:
 
     def draw(self) -> None:
         self.screen.fill((255, 0, 255))
-        self.parser.glyphs[self.index].draw(self.screen, (30, 60))
+        self.parser.glyphs[self.index].draw(self.screen, (80, 80))
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():

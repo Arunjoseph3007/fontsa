@@ -1,10 +1,7 @@
 from pathlib import Path
 from typing import Self, NamedTuple, Dict, List, Union
 from glyph import Glyph
-
-
-def isNthBitOn(word: bytes, index: int) -> bool:
-    return word[0] >> index & 1 == 1
+from utils import isNthBitOn
 
 
 class TableRecord(NamedTuple):

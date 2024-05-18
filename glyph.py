@@ -1,4 +1,5 @@
 from typing import List, Tuple
+from utils import isNthBitOn
 import pygame
 
 
@@ -25,10 +26,11 @@ class Glyph:
 
     def draw(self, screen: pygame.Surface, loc: Tuple[int, int]):
         locX, locY = loc
-        newPoints = [(x * 0.1 + locX, y * 0.1 + locY) for x, y in self.points]
+        newPoints = [(x * 0.2 + locX, 300 - y * 0.2 + locY) for x, y in self.points]
 
-        # for p in newPoints:
-        #     pygame.draw.circle(screen, (0, 0, 255), p, 5)
+        for i, p in enumerate(newPoints):
+            onTheCurve = isNthBitOn(self.flags[i], 0)
+            pygame.draw.circle(screen, (0, 0, 255) if onTheCurve else (0, 255, 0), p, 3)
 
         startIndex = 0
 
