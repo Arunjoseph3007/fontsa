@@ -7,8 +7,8 @@
 ## Next Steps
 
 - [ ] Figure out to convert high degree beziers to quadratic
-- [ ] Parse GlyphIds in `cmap` table
+- [x] Parse GlyphIds in `cmap` table
 - [ ] Parse compound Glyphs
-- [ ] Print strings using `cmap` mapping
+- [x] Print strings using `cmap` mapping
 - [ ] Use `hmtx` and `vmtx` tables to find spacing
 - [ ] System to control font-size, 
