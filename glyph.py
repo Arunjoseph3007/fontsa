@@ -1,5 +1,6 @@
 from typing import List, Tuple
 from utils import isNthBitOn
+from file_reader import BinaryFileReader
 import pygame.gfxdraw
 import pygame
 
@@ -9,15 +10,86 @@ class Glyph:
     endPtsOfContours: List[int]
     flags: List[bytes]
     points: List[Tuple[int, int]]
+    isComPound: bool
 
-    def __init__(
-        self,
-        numberOfContours: int,
-        endPtsOfContours: List[int],
-        flags: List[bytes],
-        xCoords: List[int],
-        yCoords: List[int],
-    ) -> None:
+    def __init__(self, reader: BinaryFileReader) -> None:
+        numberOfContours = reader.parseInt16()
+        if numberOfContours < 0:
+            # TODO Parse compound Glyf
+            self.isComPound = True
+            return
+
+        self.isComPound = False
+        xMin = reader.parseInt16()
+        yMin = reader.parseInt16()
+        xMax = reader.parseInt16()
+        yMax = reader.parseInt16()
+
+        endPtsOfContours: List[int] = []
+        for _ in range(numberOfContours):
+            endPtsOfContours.append(reader.parseUint16())
+
+        numberOfPoints = endPtsOfContours[-1] + 1
+        instructionLength = reader.parseUint16()
+        instructions: List[int] = []
+        for _ in range(instructionLength):
+            instructions.append(reader.parseUint8())
+
+        flags: List[bytes] = []
+
+        while len(flags) < numberOfPoints:
+            flag = reader.takeBytes(1)
+            repeat = isNthBitOn(flag, 3)
+            flags.append(flag)
+
+            if repeat:
+                repeatCount = reader.parseUint8()
+                for _ in range(repeatCount):
+                    flags.append(flag)
+
+        xCoords: List[int] = []
+        yCoords: List[int] = []
+        xAcc: int = 0
+        yAcc: int = 0
+
+        for flag in flags:
+            xShort = isNthBitOn(flag, 1)
+            yOffset: int
+
+            if xShort:
+                yOffset = reader.parseUint8()
+                isPositive = isNthBitOn(flag, 4)
+                if not isPositive:
+                    yOffset *= -1
+            else:
+                isRepeat = isNthBitOn(flag, 4)
+                if isRepeat:
+                    yOffset = 0
+                else:
+                    yOffset = reader.parseInt16()
+
+            xAcc += yOffset
+            xCoords.append(xAcc)
+
+        for flag in flags:
+            yShort = isNthBitOn(flag, 2)
+            yOffset: int
+
+            if yShort:
+                yOffset = reader.parseUint8()
+                isPositive = isNthBitOn(flag, 5)
+                if not isPositive:
+                    yOffset *= -1
+            else:
+                isRepeat = isNthBitOn(flag, 5)
+                if isRepeat:
+                    yOffset = 0
+                else:
+                    yOffset = reader.parseInt16()
+
+            yAcc += yOffset
+            yCoords.append(yAcc)
+
         self.numberOfContours = numberOfContours
         self.endPtsOfContours = endPtsOfContours
         self.flags = flags
