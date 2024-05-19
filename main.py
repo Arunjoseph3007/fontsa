@@ -1,7 +1,7 @@
 from renderer import Renderer
-from fparser import FontParser
+from font import Font
 
-fp = FontParser("assets/Roboto-Regular.ttf")
+fp = Font("assets/Roboto-Regular.ttf")
 
 rend = Renderer(fp)
 rend.mainloop()

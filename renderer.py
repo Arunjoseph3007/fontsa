@@ -1,6 +1,6 @@
 import pygame
 import pygame.gfxdraw
-from fparser import FontParser
+from font import Font
 
 
 class Renderer:
@@ -9,15 +9,15 @@ class Renderer:
     height: int = 650
     title: str = "Fontsa"
     running: bool
-    parser: FontParser
+    font: Font
     index: int = 0
 
-    def __init__(self, parser: FontParser) -> None:
+    def __init__(self, parser: Font) -> None:
         pygame.init()
         pygame.display.set_caption(self.title)
         self.screen = pygame.display.set_mode([self.width, self.height])
         self.running = True
-        self.parser = parser
+        self.font = parser
 
     def mainloop(self) -> None:
         while self.running:
@@ -31,7 +31,7 @@ class Renderer:
 
     def draw(self) -> None:
         self.screen.fill((255, 0, 255))
-        self.parser.glyphs[self.index].draw(self.screen, (80, 80))
+        self.font.glyphs[self.index].draw(self.screen, (80, 80))
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():

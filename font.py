@@ -1,4 +1,3 @@
-from pathlib import Path
 from typing import NamedTuple, Dict, List, Union
 from file_reader import BinaryFileReader
 from glyph import Glyph
@@ -95,7 +94,7 @@ class CmapTable:
         # )
 
 
-class FontParser:
+class Font:
     fontDirectory: Dict[str, TableRecord] = {}
     cmapTable: CmapTable
     maxpTable: MaxpTable

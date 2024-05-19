@@ -1,7 +1,6 @@
 from typing import List, Tuple
-
-import pygame.gfxdraw
 from utils import isNthBitOn
+import pygame.gfxdraw
 import pygame
 
 
