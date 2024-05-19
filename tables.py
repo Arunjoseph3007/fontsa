@@ -1,4 +1,5 @@
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Dict
+from file_reader import BinaryFileReader
 
 
 class TableRecord(NamedTuple):
@@ -58,34 +59,77 @@ class CmapTable:
     endCodes: List[int] = []
     idDeltas: List[int] = []
     idRangeOffsets: List[int] = []
+    glyphIndexMap: Dict[int, int] = {}
     segCount: int
 
-    def __init__(
-        self, start: List[int], end: List[int], delta: List[int], offset: List[int]
-    ) -> None:
-        self.startCodes = start
-        self.endCodes = end
-        self.idDeltas = delta
-        self.idRangeOffsets = offset
-        self.segCount = len(start)
+    def __init__(self, reader: BinaryFileReader) -> None:
+        version = reader.parseUint16()
+        numberSubtables = reader.parseUint16()
+
+        encodingRecords: List[EncodingRecord] = []
+
+        for i in range(numberSubtables):
+            platformID = reader.parseUint16()
+            encodingID = reader.parseUint16()
+            offset = reader.parseUint32()
+
+            encodingRecords.append(
+                EncodingRecord(
+                    offset=offset, platformID=platformID, encodingID=encodingID
+                )
+            )
+
+        format = reader.parseUint16()
+        length = reader.parseUint16()
+        language = reader.parseUint16()
+        segCount2x = reader.parseUint16()
+        self.segCount = int(segCount2x / 2)
+        searchRange = reader.parseUint16()
+        entrySelector = reader.parseUint16()
+        rangeShift = reader.parseUint16()
+
+        for i in range(self.segCount):
+            self.endCodes.append(reader.parseUint16())
+
+        reservedPad = reader.parseUint16()
+
+        for i in range(self.segCount):
+            self.startCodes.append(reader.parseUint16())
+
+        for i in range(self.segCount):
+            self.idDeltas.append(reader.parseInt16())
+
+        idRangeOffsetsStart = reader.index
+
+        for i in range(self.segCount):
+            self.idRangeOffsets.append(reader.parseUint16())
+
+        # Copy pasted code please beware
+        for i in range(1, self.segCount):
+            glyphIndex = 0
+            endCode = self.endCodes[i]
+            startCode = self.startCodes[i]
+            idDelta = self.idDeltas[i]
+            idRangeOffset = self.idRangeOffsets[i]
+
+            for c in range(startCode, endCode):
+                if idRangeOffset != 0:
+                    startCodeOffset = (c - startCode) * 2
+                    currentRangeOffset = i * 2
+                    glyphIndexOffset = (
+                        idRangeOffsetsStart
+                        + currentRangeOffset
+                        + idRangeOffset
+                        + startCodeOffset
+                    )
+
+                    reader.goto(glyphIndexOffset)
+                    glyphIndex = reader.parseUint16()
+                    if glyphIndex != 0:
+                        glyphIndex = (glyphIndex + idDelta) & 0xFFFF
+                else:
+                    glyphIndex = (c + idDelta) & 0xFFFF
+                self.glyphIndexMap[c] = glyphIndex
 
     def getGlyphId(self, charCode: int) -> int:
-        segIndex: int
-        for i, j in enumerate(self.startCodes):
-            if j >= charCode:
-                if self.startCodes[i] > charCode:
-                    return 0
-                segIndex = i
-                break
-
-        if self.idRangeOffsets[segIndex] == 0:
-            return charCode + self.idDeltas[segIndex]
-
-        return 0
-        # TODO: implement format 4 of cmap tables https://developer.apple.com/fonts/TrueType-Reference-Manual/RM06/Chap6cmap.html
-        # return (
-        #     int(self.idRangeOffsets[segIndex] / 2)
-        #     + charCode
-        #     - self.startCodes[segIndex]
-        #     + self.idRangeOffsets[segIndex]
-        # )
+        return self.glyphIndexMap[charCode]

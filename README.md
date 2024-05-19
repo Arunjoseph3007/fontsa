@@ -1,10 +1,8 @@
-## Bezier Formula
+## Resources
 
-$p(t) = (1-t)2p0 + 2t(1-t)p1 + t2p2$
-
-## If Stuck
-
-[look here](https://youtu.be/SO83KQuuZvg?t=608)
+- [Sebastian Lague's Youtube Vedio](https://youtu.be/SO83KQuuZvg?t=608)
+- [Online TTF File parser](https://fontdrop.info)
+- [Blog about TTF parsing](https://tchayen.github.io/posts/ttf-file-parsing)
 
 ## Next Steps
 
