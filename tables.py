@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Dict
+from typing import NamedTuple, List, Dict, Tuple
 from file_reader import BinaryFileReader
 
 
@@ -133,3 +133,17 @@ class CmapTable:
 
     def getGlyphId(self, charCode: int) -> int:
         return self.glyphIndexMap[charCode]
+
+
+class HmtxTable(NamedTuple):
+    hMetrics: List[Tuple[int, int]]
+    leftSideBearings: List[int]
+
+    def getMetric(self, idx: int) -> Tuple[int, int]:
+        if idx < len(self.hMetrics):
+            return self.hMetrics[idx]
+        else:
+            return [
+                self.hMetrics[-1][0],
+                self.leftSideBearings[idx - len(self.hMetrics)],
+            ]
