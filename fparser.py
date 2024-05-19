@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import Self, NamedTuple, Dict, List, Union
+from typing import NamedTuple, Dict, List, Union
+from file_reader import BinaryFileReader
 from glyph import Glyph
 from utils import isNthBitOn
 
@@ -95,9 +96,6 @@ class CmapTable:
 
 
 class FontParser:
-    file: str
-    buf: bytes
-    index: int
     fontDirectory: Dict[str, TableRecord] = {}
     cmapTable: CmapTable
     maxpTable: MaxpTable
@@ -106,53 +104,52 @@ class FontParser:
     glyphs: List[Glyph] = []
 
     def __init__(self, file: str) -> None:
-        self.file = file
-        self.buf = Path(self.file).read_bytes()
-        self.index = 0
+        reader = BinaryFileReader(file)
 
-    def parseFontDirectory(self) -> None:
-        sfntVersion = self.parseUint32()
-        numTables = self.parseUint16()
-        searchRange = self.parseUint16()
-        entrySelector = self.parseUint16()
-        rangeShift = self.parseUint16()
+        self.parseFontDirectory(reader)
+        self.parseHeadTable(reader)
+        self.parseMaxpTable(reader)
+        self.parseCmapTable(reader)
+        self.parseLocaTable(reader)
+        self.parseGlyphTable(reader)
+
+    def parseFontDirectory(self, reader: BinaryFileReader) -> None:
+        sfntVersion = reader.parseUint32()
+        numTables = reader.parseUint16()
+        searchRange = reader.parseUint16()
+        entrySelector = reader.parseUint16()
+        rangeShift = reader.parseUint16()
 
         for i in range(numTables):
-            tag = self.parseTag()
-            checksum = self.parseUint32()
-            offset = self.parseUint32()
-            length = self.parseUint32()
+            tag = reader.parseTag()
+            checksum = reader.parseUint32()
+            offset = reader.parseUint32()
+            length = reader.parseUint32()
 
             self.fontDirectory[tag] = TableRecord(
                 tag=tag, checksum=checksum, length=length, offset=offset
             )
 
-        self.parseHeadTable()
-        self.parseMaxpTable()
-        self.parseCmapTable()
-        self.parseLocaTable()
-        self.parseGlyphTable()
-
-    def gotoTable(self, tableName: str) -> TableRecord:
+    def gotoTable(self, tableName: str, reader: BinaryFileReader) -> TableRecord:
         tableRecord = self.fontDirectory[tableName]
 
         if not tableRecord:
             raise NameError(f"{tableName} Table not found")
-        self.goto(tableRecord.offset)
+        reader.goto(tableRecord.offset)
         return tableRecord
 
-    def parseCmapTable(self) -> None:
-        self.gotoTable("cmap")
+    def parseCmapTable(self, reader: BinaryFileReader) -> None:
+        self.gotoTable("cmap", reader)
 
-        version = self.parseUint16()
-        numberSubtables = self.parseUint16()
+        version = reader.parseUint16()
+        numberSubtables = reader.parseUint16()
 
         encodingRecords: List[EncodingRecord] = []
 
         for i in range(numberSubtables):
-            platformID = self.parseUint16()
-            encodingID = self.parseUint16()
-            offset = self.parseUint32()
+            platformID = reader.parseUint16()
+            encodingID = reader.parseUint16()
+            offset = reader.parseUint32()
 
             encodingRecords.append(
                 EncodingRecord(
@@ -160,131 +157,133 @@ class FontParser:
                 )
             )
 
-        format = self.parseUint16()
-        length = self.parseUint16()
-        language = self.parseUint16()
-        segCount2x = self.parseUint16()
+        format = reader.parseUint16()
+        length = reader.parseUint16()
+        language = reader.parseUint16()
+        segCount2x = reader.parseUint16()
         segCount = int(segCount2x / 2)
-        searchRange = self.parseUint16()
-        entrySelector = self.parseUint16()
-        rangeShift = self.parseUint16()
+        searchRange = reader.parseUint16()
+        entrySelector = reader.parseUint16()
+        rangeShift = reader.parseUint16()
 
         endCodes: List[int] = []
         startCodes: List[int] = []
         idDeltas: List[int] = []
         idRangeOffsets: List[int] = []
         for i in range(segCount):
-            endCodes.append(self.parseUint16())
+            endCodes.append(reader.parseUint16())
 
-        reservedPad = self.parseUint16()
-
-        for i in range(segCount):
-            startCodes.append(self.parseUint16())
+        reservedPad = reader.parseUint16()
 
         for i in range(segCount):
-            idDeltas.append(self.parseInt16())
+            startCodes.append(reader.parseUint16())
 
         for i in range(segCount):
-            idRangeOffsets.append(self.parseUint16())
+            idDeltas.append(reader.parseInt16())
+
+        for i in range(segCount):
+            idRangeOffsets.append(reader.parseUint16())
 
         self.cmapTable = CmapTable(
             start=startCodes, end=endCodes, delta=idDeltas, offset=idRangeOffsets
         )
 
-    def parseMaxpTable(self) -> None:
-        self.gotoTable("maxp")
+    def parseMaxpTable(self, reader: BinaryFileReader) -> None:
+        self.gotoTable("maxp", reader)
 
         self.maxpTable = MaxpTable(
-            version=self.parseUint32(),
-            numGlyphs=self.parseUint16(),
-            maxPoints=self.parseUint16(),
-            maxContours=self.parseUint16(),
-            maxCompositePoints=self.parseUint16(),
-            maxCompositeContours=self.parseUint16(),
-            maxZones=self.parseUint16(),
-            maxTwilightPoints=self.parseUint16(),
-            maxStorage=self.parseUint16(),
-            maxFunctionDefs=self.parseUint16(),
-            maxInstructionDefs=self.parseUint16(),
-            maxStackElements=self.parseUint16(),
-            maxSizeOfInstructions=self.parseUint16(),
-            maxComponentElements=self.parseUint16(),
-            maxComponentDepth=self.parseUint16(),
+            version=reader.parseUint32(),
+            numGlyphs=reader.parseUint16(),
+            maxPoints=reader.parseUint16(),
+            maxContours=reader.parseUint16(),
+            maxCompositePoints=reader.parseUint16(),
+            maxCompositeContours=reader.parseUint16(),
+            maxZones=reader.parseUint16(),
+            maxTwilightPoints=reader.parseUint16(),
+            maxStorage=reader.parseUint16(),
+            maxFunctionDefs=reader.parseUint16(),
+            maxInstructionDefs=reader.parseUint16(),
+            maxStackElements=reader.parseUint16(),
+            maxSizeOfInstructions=reader.parseUint16(),
+            maxComponentElements=reader.parseUint16(),
+            maxComponentDepth=reader.parseUint16(),
         )
 
-    def parseHeadTable(self) -> None:
-        self.gotoTable("head")
+    def parseHeadTable(self, reader: BinaryFileReader) -> None:
+        self.gotoTable("head", reader)
 
         self.headTable = HeadTable(
-            majorVersion=self.parseUint16(),
-            minorVersion=self.parseUint16(),
-            fontRevision=self.parseUint32(),
-            checksumAdjustment=self.parseUint32(),
-            magicNumber=self.parseUint32(),
-            flags=self.parseUint16(),
-            unitsPerEm=self.parseUint16(),
-            created=self.parseLongDateTime(),
-            modified=self.parseLongDateTime(),
-            xMin=self.parseInt16(),
-            yMin=self.parseInt16(),
-            xMax=self.parseInt16(),
-            yMax=self.parseInt16(),
-            macStyle=self.parseUint16(),
-            lowestRecPPEM=self.parseUint16(),
-            fontDirectionHint=self.parseInt16(),
-            indexToLocFormat=self.parseInt16(),
-            glyphDataFormat=self.parseInt16(),
+            majorVersion=reader.parseUint16(),
+            minorVersion=reader.parseUint16(),
+            fontRevision=reader.parseUint32(),
+            checksumAdjustment=reader.parseUint32(),
+            magicNumber=reader.parseUint32(),
+            flags=reader.parseUint16(),
+            unitsPerEm=reader.parseUint16(),
+            created=reader.parseLongDateTime(),
+            modified=reader.parseLongDateTime(),
+            xMin=reader.parseInt16(),
+            yMin=reader.parseInt16(),
+            xMax=reader.parseInt16(),
+            yMax=reader.parseInt16(),
+            macStyle=reader.parseUint16(),
+            lowestRecPPEM=reader.parseUint16(),
+            fontDirectionHint=reader.parseInt16(),
+            indexToLocFormat=reader.parseInt16(),
+            glyphDataFormat=reader.parseInt16(),
         )
 
-    def parseLocaTable(self) -> None:
-        self.gotoTable("loca")
+    def parseLocaTable(self, reader: BinaryFileReader) -> None:
+        self.gotoTable("loca", reader)
 
         isShort = self.headTable.indexToLocFormat == 0
 
         for _ in range(self.maxpTable.numGlyphs):
             self.locaTable.append(
-                self.parseUint16() * 2 if isShort else self.parseUint32()
+                reader.parseUint16() * 2 if isShort else reader.parseUint32()
             )
 
-        endAddress = self.parseUint16() * 2 if isShort else self.parseUint32()
+        endAddress = reader.parseUint16() * 2 if isShort else reader.parseUint32()
 
-    def parseGlyphTable(self) -> None:
-        glyfTableRecord = self.gotoTable("glyf")
+    def parseGlyphTable(self, reader: BinaryFileReader) -> None:
+        glyfTableRecord = self.gotoTable("glyf", reader)
 
         for offset in self.locaTable:
-            self.goto(glyfTableRecord.offset + offset)
-            newGlyph = self.parseGlyph()
+            reader.goto(glyfTableRecord.offset + offset)
+            newGlyph = self.parseGlyph(reader)
             if newGlyph:
                 self.glyphs.append(newGlyph)
 
-    def parseGlyph(self) -> Union[Glyph, None]:
-        numberOfContours = self.parseInt16()
+    def parseGlyph(self, reader: BinaryFileReader) -> Union[Glyph, None]:
+        numberOfContours = reader.parseInt16()
         if numberOfContours < 0:
+            # TODO Parse compound Glyf
             return None
-        xMin = self.parseInt16()
-        yMin = self.parseInt16()
-        xMax = self.parseInt16()
-        yMax = self.parseInt16()
+
+        xMin = reader.parseInt16()
+        yMin = reader.parseInt16()
+        xMax = reader.parseInt16()
+        yMax = reader.parseInt16()
 
         endPtsOfContours: List[int] = []
         for _ in range(numberOfContours):
-            endPtsOfContours.append(self.parseUint16())
+            endPtsOfContours.append(reader.parseUint16())
 
         numberOfPoints = endPtsOfContours[-1] + 1
-        instructionLength = self.parseUint16()
+        instructionLength = reader.parseUint16()
         instructions: List[int] = []
         for _ in range(instructionLength):
-            instructions.append(self.parseUint8())
+            instructions.append(reader.parseUint8())
 
         flags: List[bytes] = []
 
         while len(flags) < numberOfPoints:
-            flag = self.takeBytes(1)
+            flag = reader.takeBytes(1)
             repeat = isNthBitOn(flag, 3)
             flags.append(flag)
 
             if repeat:
-                repeatCount = self.parseUint8()
+                repeatCount = reader.parseUint8()
                 for _ in range(repeatCount):
                     flags.append(flag)
 
@@ -298,7 +297,7 @@ class FontParser:
             yOffset: int
 
             if xShort:
-                yOffset = self.parseUint8()
+                yOffset = reader.parseUint8()
                 isPositive = isNthBitOn(flag, 4)
                 if not isPositive:
                     yOffset *= -1
@@ -307,7 +306,7 @@ class FontParser:
                 if isRepeat:
                     yOffset = 0
                 else:
-                    yOffset = self.parseInt16()
+                    yOffset = reader.parseInt16()
 
             xAcc += yOffset
             xCoords.append(xAcc)
@@ -317,7 +316,7 @@ class FontParser:
             yOffset: int
 
             if yShort:
-                yOffset = self.parseUint8()
+                yOffset = reader.parseUint8()
                 isPositive = isNthBitOn(flag, 5)
                 if not isPositive:
                     yOffset *= -1
@@ -326,7 +325,7 @@ class FontParser:
                 if isRepeat:
                     yOffset = 0
                 else:
-                    yOffset = self.parseInt16()
+                    yOffset = reader.parseInt16()
 
             yAcc += yOffset
             yCoords.append(yAcc)
@@ -338,49 +337,3 @@ class FontParser:
             xCoords=xCoords,
             yCoords=yCoords,
         )
-
-    def goto(self, index: int) -> Self:
-        self.index = index
-        return self
-
-    def skip(self, skipBytes: int) -> Self:
-        self.index += skipBytes
-        return self
-
-    def getBytes(self, noOfBytes: int) -> bytes:
-        return self.buf[self.index : self.index + noOfBytes]
-
-    def parseTag(self) -> str:
-        data = self.getBytes(4).decode("utf-8")
-        self.index += 4
-        return data
-
-    def parseUint32(self) -> int:
-        data = int.from_bytes(self.getBytes(4), signed=False)
-        self.index += 4
-        return data
-
-    def parseUint16(self) -> int:
-        data = int.from_bytes(self.getBytes(2), signed=False)
-        self.index += 2
-        return data
-
-    def parseUint8(self) -> int:
-        data = int.from_bytes(self.getBytes(1), signed=False)
-        self.index += 1
-        return data
-
-    def parseInt16(self) -> int:
-        data = int.from_bytes(self.getBytes(2), signed=True)
-        self.index += 2
-        return data
-
-    def parseLongDateTime(self) -> int:
-        data = int.from_bytes(self.getBytes(8), signed=True)
-        self.index += 8
-        return data
-
-    def takeBytes(self, length: int) -> bytes:
-        data = self.getBytes(length)
-        self.index += length
-        return data
