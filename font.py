@@ -1,6 +1,14 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
 from file_reader import BinaryFileReader
-from tables import CmapTable, EncodingRecord, HeadTable, List, MaxpTable, TableRecord
+from pygame import Surface
+from tables import (
+    CmapTable,
+    HeadTable,
+    List,
+    MaxpTable,
+    TableRecord,
+    HmtxTable,
+)
 from glyph import Glyph
 
 
@@ -9,6 +17,7 @@ class Font:
     cmapTable: CmapTable
     maxpTable: MaxpTable
     headTable: HeadTable
+    hmtxTable: HmtxTable
     locaTable: List[int] = []
     glyphs: List[Glyph] = []
 
@@ -21,6 +30,7 @@ class Font:
         self.parseCmapTable(reader)
         self.parseLocaTable(reader)
         self.parseGlyphTable(reader)
+        self.parseHmtxtable(reader)
 
     def parseFontDirectory(self, reader: BinaryFileReader) -> None:
         sfntVersion = reader.parseUint32()
@@ -48,7 +58,7 @@ class Font:
         return tableRecord
 
     def parseCmapTable(self, reader: BinaryFileReader) -> None:
-        glyphTableRecord = self.gotoTable("cmap", reader)
+        self.gotoTable("cmap", reader)
 
         self.cmapTable = CmapTable(reader)
 
@@ -116,3 +126,33 @@ class Font:
             reader.goto(glyfTableRecord.offset + offset)
             newGlyph = Glyph(reader)
             self.glyphs.append(newGlyph)
+
+    def parseHmtxtable(self, reader: BinaryFileReader) -> None:
+        self.gotoTable("hhea", reader)
+        reader.skip(34)
+        numOfLongHorMetrics = reader.parseUint16()
+
+        self.gotoTable("hmtx", reader)
+
+        hMetrics: List[Tuple[int, int]] = []
+        leftSideBearings: List[int] = []
+        for i in range(numOfLongHorMetrics):
+            advanceWidth = reader.parseUint16()
+            leftSideBearing = reader.parseInt16()
+            hMetrics.append((advanceWidth, leftSideBearing))
+
+        for i in range(self.maxpTable.numGlyphs - numOfLongHorMetrics):
+            leftSideBearings.append(reader.parseUint16())
+
+        self.hmtxTable = HmtxTable(hMetrics=hMetrics, leftSideBearings=leftSideBearings)
+
+    def printString(
+        self, screen: Surface, message: str, fontSize=0.05, letterSpacing=0
+    ) -> None:
+        x = 100
+        for i, letter in enumerate(message):
+            glyphId = self.cmapTable.getGlyphId(ord(letter))
+            advancedWidth, leftSideBearing = self.hmtxTable.getMetric(glyphId)
+            x += leftSideBearing * (fontSize + letterSpacing)
+            self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize)
+            x += advancedWidth * (fontSize + letterSpacing)

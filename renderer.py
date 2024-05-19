@@ -10,6 +10,8 @@ class Renderer:
     title: str = "Fontsa"
     running: bool
     font: Font
+    fontSize = 0.05
+    letterSpacing = 0.0
     input: str = ""
 
     def __init__(self, parser: Font) -> None:
@@ -29,21 +31,29 @@ class Renderer:
     def update(self) -> None:
         pass
 
-    def printString(self, message: str) -> None:
-        for i, letter in enumerate(message):
-            glyphId = self.font.cmapTable.getGlyphId(ord(letter))
-            self.font.glyphs[glyphId].draw(self.screen, (i * 60, 80))
-
     def draw(self) -> None:
         self.screen.fill((255, 0, 255))
-        self.printString(self.input)
+        self.font.printString(
+            self.screen,
+            self.input,
+            fontSize=self.fontSize,
+            letterSpacing=self.letterSpacing,
+        )
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
+                if event.key == pygame.K_LEFT:
+                    self.fontSize *= 0.95
+                elif event.key == pygame.K_RIGHT:
+                    self.fontSize *= 1.05
+                elif event.key == pygame.K_DOWN:
+                    self.letterSpacing -= 0.002
+                elif event.key == pygame.K_UP:
+                    self.letterSpacing += 0.002
+                elif event.key == pygame.K_SPACE:
                     self.input = ""
                 elif 97 <= event.key <= 122:
                     if pygame.key.get_mods() & pygame.KMOD_SHIFT:

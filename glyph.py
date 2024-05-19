@@ -97,18 +97,20 @@ class Glyph:
             (xCoords[i], yCoords[i]) for i in range(endPtsOfContours[-1] + 1)
         ]
 
-    def draw(self, screen: pygame.Surface, loc: Tuple[int, int]):
+    def draw(
+        self,
+        screen: pygame.Surface,
+        loc: Tuple[int, int],
+        fontSize=0.05,
+    ):
         if self.isComPound:
             return
         steps = 20
         blue = (0, 0, 255)
-        green = (0, 255, 0)
         locX, locY = loc
-        newPoints = [(x * 0.05 + locX, 300 - y * 0.05 + locY) for x, y in self.points]
-
-        # for i, p in enumerate(newPoints):
-        #     onTheCurve = isNthBitOn(self.flags[i], 0)
-        #     pygame.draw.circle(screen, blue if onTheCurve else green, p, 3)
+        newPoints = [
+            (x * fontSize + locX, 300 - y * fontSize + locY) for x, y in self.points
+        ]
 
         startIndex = 0
 

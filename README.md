@@ -11,4 +11,4 @@
 - [ ] Parse compound Glyphs
 - [x] Print strings using `cmap` mapping
 - [ ] Use `hmtx` and `vmtx` tables to find spacing
-- [ ] System to control font-size, 
+- [x] System to control font-size, letter spacing
