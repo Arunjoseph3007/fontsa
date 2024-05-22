@@ -1,7 +1,7 @@
 from renderer import Renderer
 from font import Font
 
-fp = Font("assets/Roboto-Regular.ttf")
+poppins = Font("assets/Poppins-Regular.ttf")
 
-rend = Renderer(fp)
+rend = Renderer(poppins)
 rend.mainloop()
