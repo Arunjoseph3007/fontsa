@@ -1,6 +1,7 @@
 import pygame
 import pygame.gfxdraw
 from font import Font
+from styles import Colors
 
 
 class Renderer:
@@ -32,12 +33,13 @@ class Renderer:
         pass
 
     def draw(self) -> None:
-        self.screen.fill((255, 0, 255))
+        self.screen.fill(Colors.BackGround.value)
         self.font.printString(
             self.screen,
             self.input,
             fontSize=self.fontSize,
             letterSpacing=self.letterSpacing,
+            color=Colors.Primary.value,
         )
 
     def handleEvents(self) -> None:

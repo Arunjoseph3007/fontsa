@@ -10,6 +10,7 @@ from tables import (
     HmtxTable,
 )
 from glyph import Glyph
+from styles import Colors
 
 
 class Font:
@@ -147,12 +148,17 @@ class Font:
         self.hmtxTable = HmtxTable(hMetrics=hMetrics, leftSideBearings=leftSideBearings)
 
     def printString(
-        self, screen: Surface, message: str, fontSize=0.05, letterSpacing=0
+        self,
+        screen: Surface,
+        message: str,
+        fontSize=0.05,
+        letterSpacing=0,
+        color=Colors.Text.value,
     ) -> None:
         x = 100
         for i, letter in enumerate(message):
             glyphId = self.cmapTable.getGlyphId(ord(letter))
             advancedWidth, leftSideBearing = self.hmtxTable.getMetric(glyphId)
             x += leftSideBearing * (fontSize + letterSpacing)
-            self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize)
+            self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize, color=color)
             x += advancedWidth * (fontSize + letterSpacing)

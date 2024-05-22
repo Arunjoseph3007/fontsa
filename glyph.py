@@ -1,6 +1,7 @@
-from typing import List, Tuple
+from typing import List, Tuple, NamedTuple
 from utils import isNthBitOn
 from file_reader import BinaryFileReader
+from styles import Colors
 import pygame.gfxdraw
 import pygame
 
@@ -97,16 +98,34 @@ class Glyph:
             (xCoords[i], yCoords[i]) for i in range(endPtsOfContours[-1] + 1)
         ]
 
+    def drawSpline(
+        self,
+        screen: pygame.Surface,
+        points: List[Tuple[int, int]],
+        color,
+    ):
+        steps = 1000
+        startPoint = points[0]
+        for i, point in enumerate(points[1:-1]):
+            pb = points[i + 2]
+            midPoint = (point[0] + pb[0]) / 2, (point[1] + pb[1]) / 2
+            pygame.gfxdraw.bezier(screen, [startPoint, point, midPoint], steps, color)
+            startPoint = midPoint
+
+        pygame.gfxdraw.bezier(
+            screen, [startPoint, points[-2], points[-1]], steps, color
+        )
+
     def draw(
         self,
         screen: pygame.Surface,
         loc: Tuple[int, int],
         fontSize=0.05,
+        color=Colors.Text,
     ):
         if self.isComPound:
             return
-        steps = 20
-        blue = (0, 0, 255)
+
         locX, locY = loc
         newPoints = [
             (x * fontSize + locX, 300 - y * fontSize + locY) for x, y in self.points
@@ -123,19 +142,54 @@ class Glyph:
                 if not onTheCurve:
                     spline.append(p)
                 elif len(spline) == 1:
-                    pygame.draw.aaline(screen, blue, spline[0], p)
+                    pygame.draw.aaline(screen, color, spline[0], p)
                     spline = [p]
                 elif len(spline) > 1:
                     spline.append(p)
-                    pygame.gfxdraw.bezier(screen, spline, steps, blue)
+                    self.drawSpline(screen, spline, color)
                     spline = [p]
                 else:
                     spline.append(p)
             # Last countour with starting point
             if len(spline) == 1:
-                pygame.draw.aaline(screen, blue, spline[0], newPoints[startIndex])
+                pygame.draw.aaline(screen, color, spline[0], newPoints[startIndex])
             else:
                 spline.append(newPoints[startIndex])
-                pygame.gfxdraw.bezier(screen, spline, steps, blue)
+                self.drawSpline(screen, spline, color)
 
             startIndex = endIndex + 1
+
+
+class CompoundGlyphComponent(NamedTuple):
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
+    f: int
+
+    def getTanrsformed(self, x: int, y: int) -> Tuple[int, int]:
+        m = max(abs(self.a), abs(self.b))
+        n = max(abs(self.c), abs(self.d))
+
+        if abs(abs(self.a) - abs(self.c)) <= 33 / 65536:
+            m *= 2
+        if abs(abs(self.b) - abs(self.d)) <= 33 / 65536:
+            n *= 2
+
+        _x = self.a * x + self.c * y + self.e * m
+        _y = self.b * x + self.d * y + self.f * n
+        return _x, _y
+
+
+class CompoundGlyph:
+    def __init__(self, reader: BinaryFileReader) -> None:
+        hasMoreComponents = True
+        while hasMoreComponents:
+            flags = reader.parseUint16()
+            glyphIndex = reader.parseUint16()
+
+            argsAreWord = isNthBitOn(flags, 0)
+            hasMoreComponents = isNthBitOn(flags, 5)
+            hasAScale = isNthBitOn(flags, 3)
+            hasDifferentScaleForXAndY = isNthBitOn(6)
