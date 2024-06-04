@@ -17,6 +17,8 @@ class Renderer:
 
     def __init__(self, parser: Font) -> None:
         pygame.init()
+        icon = pygame.image.load("assets/logo.png")
+        pygame.display.set_icon(icon)
         pygame.display.set_caption(self.title)
         self.screen = pygame.display.set_mode([self.width, self.height])
         self.running = True
@@ -34,13 +36,19 @@ class Renderer:
 
     def draw(self) -> None:
         self.screen.fill(Colors.BackGround.value)
-        self.font.printString(
-            self.screen,
-            self.input,
-            fontSize=self.fontSize,
-            letterSpacing=self.letterSpacing,
-            color=Colors.Primary.value,
-        )
+        # self.font.printString(
+        #     self.screen,
+        #     self.input,
+        #     fontSize=self.fontSize,
+        #     letterSpacing=self.letterSpacing,
+        #     color=Colors.Primary.value,
+        # )
+        self.font.glyphs[0].draw(self.screen, (10, 10), self.fontSize)
+        self.font.glyphs[1].draw(self.screen, (100, 10), self.fontSize)
+        self.font.drawGlyf(self.screen, 2, (200, 10), self.fontSize)
+        self.font.drawGlyf(self.screen, 3, (300, 10), self.fontSize)
+        self.font.drawGlyf(self.screen, 4, (400, 10), self.fontSize)
+        self.font.drawGlyf(self.screen, 5, (500, 10), self.fontSize)
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():

@@ -9,7 +9,8 @@ from tables import (
     TableRecord,
     HmtxTable,
 )
-from glyph import Glyph
+from glyph import SimpleGlyph, Glyph
+from compound_glyph import CompundGlyph
 from styles import Colors
 
 
@@ -125,7 +126,11 @@ class Font:
 
         for offset in self.locaTable:
             reader.goto(glyfTableRecord.offset + offset)
-            newGlyph = Glyph(reader)
+            numContours = reader.parseInt16()
+            isSimple = numContours >= 0
+            newGlyph = (
+                SimpleGlyph(reader, numContours) if isSimple else CompundGlyph(reader)
+            )
             self.glyphs.append(newGlyph)
 
     def parseHmtxtable(self, reader: BinaryFileReader) -> None:
@@ -160,5 +165,24 @@ class Font:
             glyphId = self.cmapTable.getGlyphId(ord(letter))
             advancedWidth, leftSideBearing = self.hmtxTable.getMetric(glyphId)
             x += leftSideBearing * (fontSize + letterSpacing)
-            self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize, color=color)
+            self.drawGlyf(screen, glyphId, (x, 80), fontSize=fontSize, color=color)
+            # self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize, color=color)
             x += advancedWidth * (fontSize + letterSpacing)
+
+    def drawGlyf(
+        self,
+        screen: Surface,
+        glyphId: int,
+        loc: Tuple[int, int],
+        fontSize=0.05,
+        color=Colors.Text.value,
+    ):
+        glyph = self.glyphs[glyphId]
+
+        if glyph.isCompound:
+            for component in glyph.components:
+                self.drawGlyf(
+                    screen, component.glyphIndex, loc, fontSize=fontSize, color=color
+                )
+        else:
+            glyph.draw(screen, loc, fontSize=fontSize, color=color)

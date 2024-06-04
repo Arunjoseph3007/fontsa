@@ -40,6 +40,11 @@ class BinaryFileReader:
         self.index += 1
         return data
 
+    def parseInt8(self) -> int:
+        data = int.from_bytes(self.getBytes(1), signed=True)
+        self.index += 1
+        return data
+
     def parseInt16(self) -> int:
         data = int.from_bytes(self.getBytes(2), signed=True)
         self.index += 2

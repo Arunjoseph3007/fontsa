@@ -7,20 +7,22 @@ import pygame
 
 
 class Glyph:
+    isCompound: bool
+
+    def __init__(self, isCompound: bool) -> None:
+        self.isCompound = isCompound
+
+
+class SimpleGlyph(Glyph):
     numberOfContours: int
     endPtsOfContours: List[int]
     flags: List[bytes]
     points: List[Tuple[int, int]]
-    isComPound: bool
 
-    def __init__(self, reader: BinaryFileReader) -> None:
-        numberOfContours = reader.parseInt16()
-        if numberOfContours < 0:
-            # TODO Parse compound Glyf
-            self.isComPound = True
-            return
-
-        self.isComPound = False
+    def __init__(self, reader: BinaryFileReader, numberOfContours: int) -> None:
+        super().__init__(False)
+        self.numberOfContours = numberOfContours
+        self.isCompound = False
         xMin = reader.parseInt16()
         yMin = reader.parseInt16()
         xMax = reader.parseInt16()
@@ -121,11 +123,8 @@ class Glyph:
         screen: pygame.Surface,
         loc: Tuple[int, int],
         fontSize=0.05,
-        color=Colors.Text,
+        color=Colors.Text.value,
     ):
-        if self.isComPound:
-            return
-
         locX, locY = loc
         newPoints = [
             (x * fontSize + locX, 300 - y * fontSize + locY) for x, y in self.points
@@ -158,38 +157,3 @@ class Glyph:
                 self.drawSpline(screen, spline, color)
 
             startIndex = endIndex + 1
-
-
-class CompoundGlyphComponent(NamedTuple):
-    a: int
-    b: int
-    c: int
-    d: int
-    e: int
-    f: int
-
-    def getTanrsformed(self, x: int, y: int) -> Tuple[int, int]:
-        m = max(abs(self.a), abs(self.b))
-        n = max(abs(self.c), abs(self.d))
-
-        if abs(abs(self.a) - abs(self.c)) <= 33 / 65536:
-            m *= 2
-        if abs(abs(self.b) - abs(self.d)) <= 33 / 65536:
-            n *= 2
-
-        _x = self.a * x + self.c * y + self.e * m
-        _y = self.b * x + self.d * y + self.f * n
-        return _x, _y
-
-
-class CompoundGlyph:
-    def __init__(self, reader: BinaryFileReader) -> None:
-        hasMoreComponents = True
-        while hasMoreComponents:
-            flags = reader.parseUint16()
-            glyphIndex = reader.parseUint16()
-
-            argsAreWord = isNthBitOn(flags, 0)
-            hasMoreComponents = isNthBitOn(flags, 5)
-            hasAScale = isNthBitOn(flags, 3)
-            hasDifferentScaleForXAndY = isNthBitOn(6)
