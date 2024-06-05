@@ -1,4 +1,4 @@
-from typing import List, Tuple, NamedTuple
+from typing import List, Tuple
 from utils import isNthBitOn
 from file_reader import BinaryFileReader
 from styles import Colors
@@ -19,10 +19,21 @@ class SimpleGlyph(Glyph):
     flags: List[bytes]
     points: List[Tuple[int, int]]
 
-    def __init__(self, reader: BinaryFileReader, numberOfContours: int) -> None:
-        super().__init__(False)
-        self.numberOfContours = numberOfContours
+    def __init__(
+        self,
+        numberOfContours: int,
+        endPtsOfContours: List[int],
+        flags: List[bytes],
+        points: List[Tuple[int, int]],
+    ) -> None:
         self.isCompound = False
+        self.numberOfContours = numberOfContours
+        self.endPtsOfContours = endPtsOfContours
+        self.flags = flags
+        self.points = points
+
+    @staticmethod
+    def fromReader(reader: BinaryFileReader, numberOfContours: int):
         xMin = reader.parseInt16()
         yMin = reader.parseInt16()
         xMax = reader.parseInt16()
@@ -93,12 +104,12 @@ class SimpleGlyph(Glyph):
             yAcc += yOffset
             yCoords.append(yAcc)
 
-        self.numberOfContours = numberOfContours
-        self.endPtsOfContours = endPtsOfContours
-        self.flags = flags
-        self.points = [
-            (xCoords[i], yCoords[i]) for i in range(endPtsOfContours[-1] + 1)
-        ]
+        return SimpleGlyph(
+            numberOfContours=numberOfContours,
+            endPtsOfContours=endPtsOfContours,
+            flags=flags,
+            points=[(xCoords[i], yCoords[i]) for i in range(endPtsOfContours[-1] + 1)],
+        )
 
     def drawSpline(
         self,
@@ -157,3 +168,8 @@ class SimpleGlyph(Glyph):
                 self.drawSpline(screen, spline, color)
 
             startIndex = endIndex + 1
+
+    def transform(self, scaleX: int, scaleY: int, offsetX: int, offsetY: int) -> None:
+        self.points = [
+            (scaleX * x + offsetX, scaleY * y + offsetY) for (x, y) in self.points
+        ]

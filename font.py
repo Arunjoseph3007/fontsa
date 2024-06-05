@@ -121,17 +121,88 @@ class Font:
 
         endAddress = reader.parseUint16() * 2 if isShort else reader.parseUint32()
 
+    def parseGlyph(self, reader: BinaryFileReader, loc: int) -> SimpleGlyph:
+        reader.goto(loc)
+        numContours = reader.parseInt16()
+        isSimple = numContours >= 0
+        if isSimple:
+            return SimpleGlyph.fromReader(reader, numContours)
+        return self.parseCompoundGlyph(reader)
+
+    def parseCompoundGlyph(self, reader: BinaryFileReader) -> SimpleGlyph:
+        compGlyph = SimpleGlyph(
+            numberOfContours=0,
+            endPtsOfContours=[],
+            flags=[],
+            points=[],
+        )
+        xMin = reader.parseInt16()
+        yMin = reader.parseInt16()
+        xMax = reader.parseInt16()
+        yMax = reader.parseInt16()
+
+        hasMoreComponents = 1
+        p = 0
+        while hasMoreComponents:
+            flags = reader.parseUint16()
+            glyphIndex = reader.parseUint16()
+            argsAreWord = flags & 1
+            areSignedValues = flags & (1 << 1)
+            hasAScale = flags & (1 << 3)
+            hasMoreComponents = flags & (1 << 5)
+            hasXYScale = flags & (1 << 6)
+            has2by2 = flags & (1 << 7)
+
+            scaleX = 1.0
+            scaleY = 1.0
+            offsetX = 0.0
+            offsetY = 0.0
+
+            if areSignedValues:
+                if argsAreWord:
+                    offsetX = reader.parseInt16()
+                    offsetY = reader.parseInt16()
+                else:
+                    offsetX = reader.parseInt8()
+                    offsetY = reader.parseInt8()
+
+            if hasAScale:
+                scaleX = scaleY = reader.parseInt16()
+            elif hasXYScale:
+                scaleX = reader.parseInt16()
+                scaleY = reader.parseInt16()
+            elif has2by2:
+                reader.parseInt16()
+                reader.parseInt16()
+                reader.parseInt16()
+                reader.parseInt16()
+
+            p += 1
+            curLoc = reader.index
+            compLoc = self.fontDirectory["glyf"].offset + self.locaTable[glyphIndex]
+            glyphComponent = self.parseGlyph(reader, compLoc)
+            glyphComponent.transform(
+                scaleX=scaleX, scaleY=scaleY, offsetX=offsetX, offsetY=offsetY
+            )
+            reader.goto(curLoc)
+
+            currentPoints = len(compGlyph.points)
+            compGlyph.numberOfContours += glyphComponent.numberOfContours
+            compGlyph.flags += glyphComponent.flags
+            compGlyph.points += glyphComponent.points
+            compGlyph.endPtsOfContours += [
+                x + currentPoints for x in glyphComponent.endPtsOfContours
+            ]
+
+        return compGlyph
+
     def parseGlyphTable(self, reader: BinaryFileReader) -> None:
         glyfTableRecord = self.gotoTable("glyf", reader)
 
         for offset in self.locaTable:
-            reader.goto(glyfTableRecord.offset + offset)
-            numContours = reader.parseInt16()
-            isSimple = numContours >= 0
-            newGlyph = (
-                SimpleGlyph(reader, numContours) if isSimple else CompundGlyph(reader)
-            )
-            self.glyphs.append(newGlyph)
+            glyphLoc = glyfTableRecord.offset + offset
+            glyph = self.parseGlyph(reader, glyphLoc)
+            self.glyphs.append(glyph)
 
     def parseHmtxtable(self, reader: BinaryFileReader) -> None:
         self.gotoTable("hhea", reader)
@@ -178,11 +249,4 @@ class Font:
         color=Colors.Text.value,
     ):
         glyph = self.glyphs[glyphId]
-
-        if glyph.isCompound:
-            for component in glyph.components:
-                self.drawGlyf(
-                    screen, component.glyphIndex, loc, fontSize=fontSize, color=color
-                )
-        else:
-            glyph.draw(screen, loc, fontSize=fontSize, color=color)
+        glyph.draw(screen, loc, fontSize=fontSize, color=color)
