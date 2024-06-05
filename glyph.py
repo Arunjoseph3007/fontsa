@@ -6,14 +6,8 @@ import pygame.gfxdraw
 import pygame
 
 
-class Glyph:
+class SimpleGlyph:
     isCompound: bool
-
-    def __init__(self, isCompound: bool) -> None:
-        self.isCompound = isCompound
-
-
-class SimpleGlyph(Glyph):
     numberOfContours: int
     endPtsOfContours: List[int]
     flags: List[bytes]

@@ -9,8 +9,7 @@ from tables import (
     TableRecord,
     HmtxTable,
 )
-from glyph import SimpleGlyph, Glyph
-from compound_glyph import CompundGlyph
+from glyph import SimpleGlyph
 from styles import Colors
 
 
@@ -21,7 +20,7 @@ class Font:
     headTable: HeadTable
     hmtxTable: HmtxTable
     locaTable: List[int] = []
-    glyphs: List[Glyph] = []
+    glyphs: List[SimpleGlyph] = []
 
     def __init__(self, file: str) -> None:
         reader = BinaryFileReader(file)
@@ -236,8 +235,7 @@ class Font:
             glyphId = self.cmapTable.getGlyphId(ord(letter))
             advancedWidth, leftSideBearing = self.hmtxTable.getMetric(glyphId)
             x += leftSideBearing * (fontSize + letterSpacing)
-            self.drawGlyf(screen, glyphId, (x, 80), fontSize=fontSize, color=color)
-            # self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize, color=color)
+            self.glyphs[glyphId].draw(screen, (x, 80), fontSize=fontSize, color=color)
             x += advancedWidth * (fontSize + letterSpacing)
 
     def drawGlyf(
